@@ -209,6 +209,34 @@ body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellips
 .toast.error{background:#fff5f5;border:2px solid var(--danger);color:var(--danger)}
 .toast.info{background:#f0fdf0;border:2px solid var(--accent);color:#2d7a00}
 
+/* ─── VIEW TOGGLE ─── */
+.view-toggle{display:flex;background:#f0faf0;border:2px solid var(--border);border-radius:12px;padding:3px;gap:3px;flex-shrink:0}
+.vtab{padding:4px 12px;border-radius:9px;font-size:11px;font-weight:700;border:none;background:transparent;color:var(--muted);cursor:pointer;transition:all .15s}
+.vtab.active{background:#ffffff;color:var(--accent);box-shadow:0 1px 4px rgba(0,0,0,0.08)}
+
+/* ─── PATTERN HEADER ─── */
+.pattern-header{display:flex;align-items:center;justify-content:space-between;padding:10px 14px 6px;flex-shrink:0}
+.pattern-header-text{display:flex;align-items:center;gap:6px;font-size:13px;font-weight:700}
+.pattern-header-icon{font-size:16px}
+
+/* ─── PATTERN CARDS ─── */
+.pattern-block{background:#ffffff;border:2px solid var(--border);border-radius:14px;margin-bottom:14px;overflow:hidden;box-shadow:0 2px 0 var(--border)}
+.pattern-block-head{padding:12px 14px;background:linear-gradient(135deg,#f0fdf0,#e8f5e9);border-bottom:2px solid var(--border);display:flex;align-items:flex-start;gap:10px}
+.pattern-number{width:24px;height:24px;border-radius:50%;background:var(--accent);color:#fff;font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 2px 0 #46a302}
+.pattern-name{font-size:13px;font-weight:800;color:#2d7a00;flex:1;line-height:1.4}
+.pattern-structure{font-size:11px;font-weight:600;color:var(--muted);margin-top:3px;font-style:italic}
+.pattern-examples{padding:10px 14px;display:flex;flex-direction:column;gap:6px}
+.pattern-example-item{display:flex;align-items:flex-start;gap:8px;padding:8px 10px;background:#fafffe;border:1px solid var(--border);border-radius:10px;transition:border-color .13s}
+.pattern-example-item:hover{border-color:var(--accent)}
+.pattern-ex-dot{width:6px;height:6px;border-radius:50%;background:var(--accent);flex-shrink:0;margin-top:5px}
+.pattern-ex-text{font-size:12px;font-weight:500;line-height:1.55;flex:1;color:var(--text)}
+.pattern-ex-audio{flex-shrink:0;width:26px;height:26px;border-radius:50%;background:#f0fdf0;border:2px solid var(--border);color:var(--accent);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:11px;transition:all .13s}
+.pattern-ex-audio:hover{background:rgba(88,204,2,.15);border-color:var(--accent)}
+.pattern-generating{text-align:center;padding:40px 20px;color:var(--muted)}
+.pattern-gen-spinner{font-size:32px;animation:spin 1s linear infinite;display:inline-block;margin-bottom:10px}
+.pattern-gen-text{font-size:13px;font-weight:600}
+.pattern-gen-sub{font-size:11px;margin-top:4px;opacity:.7}
+
 /* ─── RESPONSIVE ─── */
 @media(max-width:680px){
   .top-stats{display:none}
@@ -218,6 +246,7 @@ body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellips
   .sidebar-title{display:none}
   .logo-sub{display:none}
   .search-box{width:130px}
+  .view-toggle{display:none}
 }
 </style>
 </head>
@@ -267,14 +296,37 @@ body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellips
           <span class="bc-title" id="bcTitle">All Phrases</span>
           <span class="bc-count" id="bcCount"></span>
         </div>
+        <div class="view-toggle" id="viewToggle" style="display:none">
+          <button class="vtab active" id="vtab-phrases" onclick="switchView('phrases')">💬 Phrases</button>
+          <button class="vtab" id="vtab-patterns" onclick="switchView('patterns')">🧩 Patterns</button>
+        </div>
         <input class="search-box" id="searchBox" placeholder="🔍 Search phrases..." oninput="render()">
       </div>
       <div class="subcat-bar" id="subcatBar"></div>
+      <!-- PHRASES VIEW -->
       <div class="phrase-scroll" id="phraseScroll">
         <div class="empty-state">
           <div class="empty-icon">🎯</div>
           <div class="empty-title">No phrases yet</div>
-          <div class="empty-desc">Click <strong style="color:var(--accent)">＋ Upload Doc</strong> to get started.<br>AI will extract & categorize phrases automatically.</div>
+          <div class="empty-desc">Click <strong style="color:var(--accent)">＋ Upload Doc</strong> to get started.<br>AI will extract &amp; categorize phrases automatically.</div>
+        </div>
+      </div>
+      <!-- PATTERNS VIEW -->
+      <div class="phrase-scroll" id="patternScroll" style="display:none">
+        <div class="pattern-header">
+          <div class="pattern-header-text">
+            <span class="pattern-header-icon">🧩</span>
+            <span id="patternTitle">Sentence Patterns</span>
+            <span class="bc-count" id="patternCount"></span>
+          </div>
+          <button class="pill pill-primary" id="genPatternBtn" onclick="generatePatterns()">✨ Generate Patterns</button>
+        </div>
+        <div id="patternContent">
+          <div class="empty-state">
+            <div class="empty-icon">🧩</div>
+            <div class="empty-title">No patterns yet</div>
+            <div class="empty-desc">Click <strong style="color:var(--accent)">✨ Generate Patterns</strong> above to let AI summarize sentence patterns from the current scene.</div>
+          </div>
         </div>
       </div>
     </div>
@@ -681,7 +733,7 @@ function drawScenes(){
   });
   document.getElementById('sceneList').innerHTML=h;
 }
-function selScene(k){ activeScene=k; activeSub='all'; drawScenes(); drawSubs(); render() }
+// selScene is defined in the view toggle section below
 
 // ════════════════════════════════════════════════
 // SUBCATEGORY BAR
@@ -946,6 +998,190 @@ function toast(msg,type='info'){
   t.textContent=msg; t.className=`toast ${type} show`;
   clearTimeout(t._tid);
   t._tid=setTimeout(()=>t.classList.remove('show'),3500);
+}
+
+// ════════════════════════════════════════════════
+// VIEW TOGGLE (Phrases / Patterns)
+// ════════════════════════════════════════════════
+let activeView = 'phrases';
+let patternCache = {}; // keyed by scene
+
+function switchView(view) {
+  activeView = view;
+  document.getElementById('vtab-phrases').classList.toggle('active', view === 'phrases');
+  document.getElementById('vtab-patterns').classList.toggle('active', view === 'patterns');
+  document.getElementById('phraseScroll').style.display = view === 'phrases' ? '' : 'none';
+  document.getElementById('patternScroll').style.display = view === 'patterns' ? '' : 'none';
+  document.getElementById('searchBox').style.display = view === 'phrases' ? '' : 'none';
+  if (view === 'patterns') renderPatterns();
+}
+
+function selScene(k) {
+  activeScene = k;
+  activeSub = 'all';
+  // show toggle only when a specific scene is selected
+  document.getElementById('viewToggle').style.display = k === 'all' ? 'none' : '';
+  if (k === 'all' && activeView === 'patterns') switchView('phrases');
+  drawScenes(); drawSubs(); render();
+  if (activeView === 'patterns') renderPatterns();
+}
+
+function renderPatterns() {
+  const def = SD[activeScene] || SD.all;
+  document.getElementById('patternTitle').textContent = def.name + ' · Sentence Patterns';
+  const cached = patternCache[activeScene];
+  if (cached) {
+    drawPatternCards(cached);
+  } else {
+    document.getElementById('patternContent').innerHTML = `
+      <div class="empty-state">
+        <div class="empty-icon">🧩</div>
+        <div class="empty-title">No patterns yet</div>
+        <div class="empty-desc">Click <strong style="color:var(--accent)">✨ Generate Patterns</strong> to let AI summarize sentence patterns from this scene's phrases.</div>
+      </div>`;
+    document.getElementById('patternCount').textContent = '';
+  }
+}
+
+async function generatePatterns() {
+  if (activeScene === 'all') { toast('Please select a specific scene first', 'info'); return; }
+  const ak = getAnthropicKey();
+  if (!ak) { toast('Please add your Anthropic API key in ⚙️ Settings first', 'error'); openDrawer('settings'); return; }
+
+  const phrases = db.phrases.filter(p => p.scene === activeScene).map(p => p.text);
+  if (phrases.length < 3) { toast('Need at least 3 phrases in this scene to generate patterns', 'info'); return; }
+
+  const def = SD[activeScene];
+  const btn = document.getElementById('genPatternBtn');
+  btn.disabled = true;
+  btn.textContent = '⏳ Generating...';
+
+  document.getElementById('patternContent').innerHTML = `
+    <div class="pattern-generating">
+      <div class="pattern-gen-spinner">🧩</div>
+      <div class="pattern-gen-text">AI is analyzing ${phrases.length} phrases...</div>
+      <div class="pattern-gen-sub">Extracting common sentence patterns</div>
+    </div>`;
+
+  try {
+    const prompt = `You are an English learning coach. Analyze these business meeting phrases from the "${def.name}" scene and identify 4-6 common reusable sentence patterns.
+
+Phrases:
+${phrases.map((p, i) => `${i + 1}. ${p}`).join('\n')}
+
+Return ONLY valid JSON (no markdown, no explanation) in this exact format:
+{
+  "patterns": [
+    {
+      "name": "Short pattern name (e.g. 'Proposing an idea')",
+      "structure": "Pattern template with [placeholders] (e.g. 'I'd like to [verb phrase] so that [reason]')",
+      "examples": ["exact phrase 1 from the list", "exact phrase 2 from the list", "exact phrase 3 from the list"]
+    }
+  ]
+}
+
+Rules:
+- Each pattern must have 2-4 example phrases pulled EXACTLY from the phrase list above
+- The structure should use [square brackets] for variable parts
+- Name should be short and action-oriented
+- Return 4-6 patterns total`;
+
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-api-key': ak, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
+      body: JSON.stringify({ model: 'claude-sonnet-4-20250514', max_tokens: 1500, messages: [{ role: 'user', content: prompt }] })
+    });
+    if (!res.ok) throw new Error('API error ' + res.status);
+    const data = await res.json();
+    const raw = data.content?.[0]?.text || '';
+    const clean = raw.replace(/```json|```/g, '').trim();
+    const parsed = JSON.parse(clean);
+    patternCache[activeScene] = parsed.patterns || [];
+    drawPatternCards(patternCache[activeScene]);
+    toast(`✅ ${patternCache[activeScene].length} patterns generated!`, 'success');
+  } catch (e) {
+    console.error(e);
+    document.getElementById('patternContent').innerHTML = `
+      <div class="empty-state">
+        <div class="empty-icon">⚠️</div>
+        <div class="empty-title">Generation failed</div>
+        <div class="empty-desc">${esc(e.message)}<br>Please check your API key and try again.</div>
+      </div>`;
+    toast('Pattern generation failed: ' + e.message, 'error');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '✨ Generate Patterns';
+  }
+}
+
+function drawPatternCards(patterns) {
+  if (!patterns || !patterns.length) {
+    document.getElementById('patternContent').innerHTML = `
+      <div class="empty-state"><div class="empty-icon">🧩</div><div class="empty-title">No patterns found</div><div class="empty-desc">Try again with more phrases in this scene.</div></div>`;
+    document.getElementById('patternCount').textContent = '';
+    return;
+  }
+  document.getElementById('patternCount').textContent = `${patterns.length} patterns`;
+  const html = patterns.map((pt, i) => `
+    <div class="pattern-block">
+      <div class="pattern-block-head">
+        <div class="pattern-number">${i + 1}</div>
+        <div style="flex:1">
+          <div class="pattern-name">${esc(pt.name)}</div>
+          <div class="pattern-structure">${esc(pt.structure)}</div>
+        </div>
+      </div>
+      <div class="pattern-examples">
+        ${(pt.examples || []).map((ex, ei) => `
+          <div class="pattern-example-item">
+            <div class="pattern-ex-dot"></div>
+            <div class="pattern-ex-text">${esc(ex)}</div>
+            <button class="pattern-ex-audio" onclick="playPatternEx(${i},${ei})" id="pex-${i}-${ei}" title="Play">▶️</button>
+          </div>`).join('')}
+      </div>
+    </div>`).join('');
+  document.getElementById('patternContent').innerHTML = html;
+}
+
+function playPatternEx(pi, ei) {
+  const patterns = patternCache[activeScene];
+  if (!patterns) return;
+  const text = patterns[pi]?.examples?.[ei];
+  if (!text) return;
+  const btnId = `pex-${pi}-${ei}`;
+  const btn = document.getElementById(btnId);
+  if (curAudio) { curAudio.pause(); curAudio = null; }
+  const key = getElevenKey();
+  if (key) {
+    if (btn) { btn.textContent = '⏳'; btn.disabled = true; }
+    fetch('https://api.elevenlabs.io/v1/text-to-speech/pNInz6obpgDQGcFmaJgB', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'xi-api-key': key },
+      body: JSON.stringify({ text, model_id: 'eleven_monolingual_v1', voice_settings: { stability: 0.5, similarity_boost: 0.75 } })
+    }).then(r => r.blob()).then(blob => {
+      const audio = new Audio(URL.createObjectURL(blob));
+      curAudio = audio;
+      if (btn) { btn.textContent = '⏹'; btn.disabled = false; }
+      audio.play();
+      audio.onended = () => { if (btn) btn.textContent = '▶️'; curAudio = null; };
+    }).catch(() => playPatternTTS(text, btn));
+  } else {
+    playPatternTTS(text, btn);
+  }
+}
+
+function playPatternTTS(text, btn) {
+  if (!('speechSynthesis' in window)) return;
+  window.speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(text);
+  u.lang = 'en-US'; u.rate = 0.85; u.pitch = 0.8;
+  const vs = window.speechSynthesis.getVoices();
+  const v = vs.find(v => v.lang === 'en-US') || vs.find(v => v.lang.startsWith('en'));
+  if (v) u.voice = v;
+  if (btn) btn.textContent = '⏹';
+  curAudio = { pause: () => window.speechSynthesis.cancel() };
+  u.onend = () => { if (btn) btn.textContent = '▶️'; curAudio = null; };
+  window.speechSynthesis.speak(u);
 }
 
 // ════════════════════════════════════════════════
